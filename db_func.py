@@ -9,6 +9,10 @@ def create_database(name: str):
     conn.row_factory = sqlite3.Row
     return conn
 
+def connect_database(path: str):
+    conn = sqlite3.connect(f"{path}")
+    conn.row_factory = sqlite3.Row
+    return conn
 
 '''
 spec: dictionary: column_name : [datatype, specifiers]. + Primary Key : column_name + Foreign Key : [(column name,ref_table)]

@@ -43,6 +43,11 @@ class MeetingSummarizer:
         """
         Returns the system prompt for meeting summarization
         This prompt is carefully designed to get consistent JSON output
+
+        NOTE: Key distinction between output fields:
+        - "key_points": Discussion topics (what was talked about)
+        - "decisions": Concrete conclusions (what was agreed upon)
+        Example: Discussing OAuth vs JWT is a key_point; choosing OAuth is a decision
         """
         return """You are an expert meeting summarizer. Your job is to analyze meeting transcripts and extract structured information.
 
@@ -71,9 +76,15 @@ You must return ONLY valid JSON with this exact structure (no additional text):
 }
 
 Guidelines:
+- KEY POINTS vs DECISIONS:
+  * "key_points": What was DISCUSSED - the main topics and themes talked about
+    Example: "Team discussed authentication options (OAuth vs JWT)"
+  * "decisions": What was DECIDED - concrete conclusions and commitments made
+    Example: "Team decided to implement OAuth for authentication"
+  * A meeting may discuss many topics but only reach decisions on some
 - Extract 3-7 key points that capture main discussion topics
 - Identify all action items with clear owners
-- Note any explicit decisions made
+- Note any explicit decisions made during the meeting
 - If no items exist for a category, use an empty array []
 - Keep descriptions concise but informative
 - Return ONLY the JSON object, no markdown, no explanation"""

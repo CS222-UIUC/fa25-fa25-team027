@@ -4,13 +4,19 @@ import time
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+import whisperx
+import tempfile
 
 import streamlit as st
 
-
 st.set_page_config(page_title="Meeting Minion", page_icon="📝", layout="wide")
-
-
+device = "cpu"
+batch_size = 4 # reduce if low on GPU mem
+compute_type = "int8" # change to "int8" if low on GPU mem (may reduce accuracy)
+model_dir = "./model/whisperx_base"
+model = whisperx.load_model("base", device, compute_type=compute_type, download_root=model_dir)
+alignment_model, alignment_metadata = whisperx.load_align_model(language_code="en", device=device)
+hf_token = ""  # Add your Hugging Face token here if needed
 @dataclass
 class MeetingRecord:
     id: str
@@ -48,12 +54,50 @@ def run_pipeline(audio_bytes: Optional[bytes], transcript_text: Optional[str]) -
 def sidebar_uploader() -> Dict[str, Any]:
     st.sidebar.header("Upload")
 
+    if "audio_file" not in st.session_state:
+        st.session_state.audio_name = None
+
     audio_file = st.sidebar.file_uploader(
         "Audio file (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"], accept_multiple_files=False
     )
 
+    speakers = st.sidebar.slider("Pick the number of speakers in the audio", min_value = 1, max_value = 5)
+    speaker_names = ["" for _ in range(speakers)]
+    for i in range(speakers):
+        speaker_names[i] = st.sidebar.text_input("Speaker {}".format(i+1))
+
+    transcript_text = ""
+    st.subheader("Transcript")
+    transcript_box = st.empty()
+    if audio_file is not None and audio_file.name != st.session_state.audio_name:
+        st.session_state.audio_name = audio_file.name
+        st.audio(audio_file)
+        suffix = "." + audio_file.name.split(".")[-1].lower()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            tmp.write(audio_file.read())
+            tmp_path = tmp.name
+
+        audio = whisperx.load_audio(tmp_path)
+        result = model.transcribe(audio, batch_size=batch_size)
+        transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
+
+        result = whisperx.align(result["segments"], alignment_model, alignment_metadata, audio, device, return_char_alignments=False)
+        transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
+        
+        diarize_model = whisperx.diarize.DiarizationPipeline("pyannote/speaker-diarization-3.0", use_auth_token=hf_token, device=device)
+        diarize_segments = diarize_model(audio, min_speakers=speakers, max_speakers=speakers)
+        result = whisperx.assign_word_speakers(diarize_segments, result)
+        transcript_text = "\n".join([(seg["speaker"] + ": " + seg["text"]) for seg in result["segments"]])
+        for i in range(speakers):
+            transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
+        transcript_box.code(transcript_text, language="text")
+
+    for i in range(speakers):
+        transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
+    transcript_box.code(transcript_text, language="text")
+        
     st.sidebar.markdown("**OR** paste a transcript:")
-    transcript_text = st.sidebar.text_area("Transcript", placeholder="Paste transcript text here…", height=160)
+    transcript_text = st.sidebar.text_area("Transcript", placeholder="Paste transcript text here…", value=transcript_text, height=160)
 
     title = st.sidebar.text_input("Meeting title", value=f"Meeting {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
@@ -162,7 +206,6 @@ def main() -> None:
 
     st.title("Meeting Minion")
     st.caption("Turn meeting recordings into transcripts, summaries, and action items.")
-
 
     controls = sidebar_uploader()
 

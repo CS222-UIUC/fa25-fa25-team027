@@ -26,7 +26,7 @@ class MeetingRecord:
             self.key_points = meeting_stats["key_points"]
             self.action_items = meeting_stats["action_items"]
         else:
-            self.meeting_id = json.loads(meeting_stats["meeting_id"])
+            self.meeting_id = int(json.loads(meeting_stats["meeting_id"]))
             self.meeting_date = json.loads(meeting_stats["meeting_date"])
             self.summary_heading = json.loads(meeting_stats["summary_heading"])
             self.key_points = json.loads(meeting_stats["key_points"])

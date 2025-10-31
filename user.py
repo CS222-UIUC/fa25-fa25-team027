@@ -2,7 +2,7 @@ from typing import List
 from meeting_record import MeetingRecord
 import class_helpers
 import db_func
-
+import json
 
 class User:
     user_id:str
@@ -11,16 +11,16 @@ class User:
     last_meeting_id:int
 
     def __init__(self,conn,username):
-        if(check_username(conn,username)):
+        if(class_helpers.check_username(conn,username)):
             uid = 0 
             mid = 0
             self.last_meeting_id = mid
             meetings = []
-            queries = fetch_user_meetings(conn,username)
+            queries = class_helpers.fetch_user_meetings(conn,username)
             for query in queries:
                 meeting_stat = dict(query) 
                 uid = meeting_stat["user_id"]
-                mid = meeting_stat["meeting_id"]
+                mid = int(json.loads(meeting_stat["meeting_id"]))
                 if(mid > self.last_meeting_id):
                     self.last_meeting_id = mid
                 meetings.append(MeetingRecord(meeting_stat))
@@ -32,7 +32,7 @@ class User:
             '''
             DOES NOT INSERT INTO TABLE ->  ONLY INSERTS WHEN LEN(MEETINGS) > 0
             '''
-            self.user_id = fetch_last_user_id(conn,username)
+            self.user_id = class_helpers.fetch_last_user_id(conn,username)
             self.username = username
             self.meetings = []
             self.last_meeting_id = 0
@@ -42,13 +42,13 @@ class User:
     '''
     def add_meeting(self,conn,ollama_input):
         new_meeting = MeetingRecord(ollama_input,True)
-        new_meeting.set_field("meeting_id",last_meeting_id)
+        new_meeting.set_field("meeting_id",self.last_meeting_id)
         self.last_meeting_id += 1
         (self.meetings).append(new_meeting)
         insert_dict = new_meeting.format_for_insert()
         insert_dict["username"] = self.username
         insert_dict["user_id"] = self.user_id
-        insert_meeting(conn,insert_dict)
+        class_helpers.insert_meeting(conn,insert_dict)
         
 
     '''
@@ -59,7 +59,7 @@ class User:
         meeting_dict = meeting.format_for_insert()
         meeting_dict["username"] = self.username
         meeting_dict["user_id"] = self.user_id
-        drop_meeting(conn,meeting_dict)
+        class_helpers.drop_meeting(conn,meeting_dict)
 
     '''
     Very dependent on DOM -> assumes that the names of the tags in the input fields in the front_end is the same. 
@@ -81,14 +81,14 @@ class User:
             m_value[field[1]][field[2]] = change
         meeting.set_field(field[0],m_value)
         (self.meetings)[meeting_index] = meeting
-        update_meeting(conn,self.user_id,self.username,meeting)
+        class_helpers.update_meeting(conn,self.user_id,self.username,meeting)
 
     
     '''
     Removes all records of the user in the table -> and set all fields to the default 0.
     '''
     def delete_user(self,conn):
-        delete(conn,{"user_id":self.user_id,"username":username},"MEETINGS_TABLE")
+        class_helpers.delete_user(conn,self.user_id,self.username)
         self.user_id = 0
         self.username = ""
         self.meetings = []

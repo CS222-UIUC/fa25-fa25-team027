@@ -44,7 +44,7 @@ db.single_insert(conn, row2, "user_summary")
 print("All Rows")
 rows = db.select(conn, None, None, None, "user_summary")
 for r in rows:
-    print(dict(r))
+    print(list(r))
 
 # select with where
 print("\n=Rows where usr_id = U001")

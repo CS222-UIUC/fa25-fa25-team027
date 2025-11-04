@@ -26,14 +26,18 @@ class MeetingSummarizer:
     def _verify_model(self):
         """Verify that the specified model is available in Ollama"""
         try:
-            models = ollama.list()
-            available_models = [m['name'] for m in models.get('models', [])]
+            models_response = ollama.list()
+            # Extract model names from the response
+            available_models = [m.model for m in models_response.models]
             if not any(self.model_name in m for m in available_models):
                 raise ValueError(
                     f"Model '{self.model_name}' not found in Ollama. "
                     f"Available models: {available_models}\n"
                     f"Pull with: ollama pull {self.model_name}"
                 )
+        except ValueError:
+            # Re-raise ValueError (model not found)
+            raise
         except Exception as e:
             raise ConnectionError(
                 f"Cannot connect to Ollama. Is it running? Error: {e}"

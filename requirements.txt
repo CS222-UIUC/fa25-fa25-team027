@@ -58,6 +58,8 @@ narwhals==2.9.0
 networkx==3.5
 nltk==3.9.2
 numpy==2.0.2
+# Ollama library for local LLM inference
+# Model required: gpt-oss-120b (install via: ollama pull gpt-oss-120b)
 ollama==0.6.0
 omegaconf==2.3.0
 onnxruntime==1.23.1

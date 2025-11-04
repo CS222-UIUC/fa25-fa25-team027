@@ -1,38 +1,38 @@
 '''
-Meeting Summarizer using Ollama
-This module handles the LLM-based summarization of meeting transcripts
+Meeting Summarizer using Ollama with gpt-oss-120b
+This module handles the LLM-based summarization of meeting transcripts using local Ollama models
 '''
 
 import json
 import ollama
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 
 class MeetingSummarizer:
     """
-    Handles meeting transcript summarization using local Ollama LLM
+    Handles meeting transcript summarization using local Ollama with gpt-oss-120b
     """
 
-    def __init__(self, model_name: str = "llama3.2"):
+    def __init__(self, model_name: str = "gpt-oss-120b"):
         """
         Initialize the summarizer with a specific Ollama model
 
         Args:
-            model_name: Name of the Ollama model to use (default: llama3.2)
+            model_name: Name of the Ollama model to use (default: gpt-oss-120b)
         """
         self.model_name = model_name
         self._verify_model()
 
     def _verify_model(self):
-        """Verify that the specified model is available"""
+        """Verify that the specified model is available in Ollama"""
         try:
             models = ollama.list()
             available_models = [m['name'] for m in models.get('models', [])]
             if not any(self.model_name in m for m in available_models):
                 raise ValueError(
-                    f"Model '{self.model_name}' not found. "
+                    f"Model '{self.model_name}' not found in Ollama. "
                     f"Available models: {available_models}\n"
-                    f"Download with: ollama pull {self.model_name}"
+                    f"Pull with: ollama pull {self.model_name}"
                 )
         except Exception as e:
             raise ConnectionError(
@@ -216,8 +216,9 @@ if __name__ == "__main__":
     print("=== Meeting Summarizer Test ===\n")
 
     try:
-        summarizer = MeetingSummarizer(model_name="llama3.2")
-        print("✓ Summarizer initialized\n")
+        # Initialize with default model (gpt-oss-120b)
+        summarizer = MeetingSummarizer()
+        print(f"✓ Summarizer initialized with model: {summarizer.model_name}\n")
 
         print("Processing transcript...")
         summary = summarizer.summarize(sample_transcript)
@@ -231,5 +232,5 @@ if __name__ == "__main__":
         print(f"\n✗ Error: {e}")
         print("\nMake sure:")
         print("1. Ollama is installed and running")
-        print("2. Model is downloaded: ollama pull llama3.2")
+        print("2. Model is pulled: ollama pull gpt-oss-120b")
         print("3. Python ollama library is installed: pip install ollama")

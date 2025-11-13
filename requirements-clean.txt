@@ -1,0 +1,27 @@
+# Meeting Minion - Core Dependencies
+# Install with: pip install -r requirements-clean.txt
+#
+# This file contains ONLY direct dependencies.
+# All transitive dependencies will be auto-installed by pip.
+
+# ============================================
+# PRODUCTION DEPENDENCIES
+# ============================================
+
+# Web Framework
+streamlit>=1.30.0
+
+# Audio Transcription & Processing
+whisperx>=3.1.0
+
+# LLM Integration (Local Ollama)
+# Note: Requires Ollama to be installed separately (https://ollama.ai)
+# Model required: gpt-oss-120b (install via: ollama pull gpt-oss-120b)
+ollama>=0.6.0
+
+# PyTorch (auto-installed by whisperx, but specified for version control)
+torch>=2.0.0,<2.5.0
+torchaudio>=2.0.0,<2.5.0
+
+# Database
+# SQLite is built into Python - no additional package needed

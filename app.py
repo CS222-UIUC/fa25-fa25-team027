@@ -8,6 +8,7 @@ import whisperx
 import tempfile
 
 import streamlit as st
+from meeting_summarizer import MeetingSummarizer
 
 st.set_page_config(page_title="Meeting Minion", page_icon="📝", layout="wide")
 device = "cpu"
@@ -17,14 +18,24 @@ model_dir = "./model/whisperx_base"
 model = whisperx.load_model("base", device, compute_type=compute_type, download_root=model_dir)
 alignment_model, alignment_metadata = whisperx.load_align_model(language_code="en", device=device)
 hf_token = ""  # Add your Hugging Face token here if needed
+
+# Initialize the meeting summarizer (using Ollama with gpt-oss-120b)
+try:
+    summarizer = MeetingSummarizer()
+except Exception as e:
+    st.error(f"Failed to initialize MeetingSummarizer: {e}")
+    st.info("Make sure Ollama is running and gpt-oss-120b model is installed.")
+    summarizer = None
 @dataclass
 class MeetingRecord:
     id: str
     created_at: str
     title: str
     transcript: str
-    summary: List[str]
-    action_items: List[str]
+    summary_heading: str
+    key_points: List[str]
+    action_items: List[Dict[str, Any]]
+    decisions: List[str]
 
 
 def _init_state() -> None:
@@ -39,17 +50,44 @@ def _now_id() -> str:
 
 
 def run_pipeline(audio_bytes: Optional[bytes], transcript_text: Optional[str]) -> Dict[str, Any]:
+    """
+    Process meeting audio/transcript using MeetingSummarizer
 
-    time.sleep(0.2)
+    Returns:
+        Dictionary with transcript, summary_heading, key_points, action_items, decisions
+    """
     transcript = transcript_text or "[PLACEHOLDER]\n"
-    summary = [
-        "Key decision: TODO — replace with model output",
-        "Discussion point: TODO — replace with model output",
-    ]
-    action_items = [
-        "@owner — TODO action, due MM/DD",
-    ]
-    return {"transcript": transcript, "summary": summary, "action_items": action_items}
+
+    # If summarizer is not initialized, return basic structure
+    if summarizer is None:
+        return {
+            "transcript": transcript,
+            "summary_heading": "Meeting Summary (Summarizer unavailable)",
+            "key_points": ["Summarizer not initialized. Please check Ollama setup."],
+            "action_items": [],
+            "decisions": []
+        }
+
+    # Use summarizer with fallback for graceful error handling
+    try:
+        summary_result = summarizer.summarize_with_fallback(transcript)
+
+        return {
+            "transcript": transcript,
+            "summary_heading": summary_result.get("summary_heading", "Meeting Summary"),
+            "key_points": summary_result.get("key_points", []),
+            "action_items": summary_result.get("action_items", []),
+            "decisions": summary_result.get("decisions", [])
+        }
+    except Exception as e:
+        st.error(f"Error during summarization: {e}")
+        return {
+            "transcript": transcript,
+            "summary_heading": "Meeting Summary (Error)",
+            "key_points": [f"Error: {str(e)}"],
+            "action_items": [],
+            "decisions": []
+        }
 
 def sidebar_uploader() -> Dict[str, Any]:
     st.sidebar.header("Upload")
@@ -126,16 +164,38 @@ def results_panel(record: MeetingRecord) -> None:
                 "Download transcript", data=record.transcript.encode("utf-8"), file_name=f"{record.id}_transcript.txt"
             )
 
-        with st.expander("Structured Summary", expanded=True):
-            st.markdown("\n".join([f"- {item}" for item in record.summary]) or "_No summary._")
+        with st.expander("Summary: " + record.summary_heading, expanded=True):
+            st.markdown("**Key Points:**")
+            st.markdown("\n".join([f"- {item}" for item in record.key_points]) or "_No key points._")
+
+            if record.decisions:
+                st.markdown("\n**Decisions Made:**")
+                st.markdown("\n".join([f"- {item}" for item in record.decisions]))
+
+            # Create downloadable summary
+            summary_text = f"{record.summary_heading}\n\n"
+            summary_text += "KEY POINTS:\n" + "\n".join([f"- {kp}" for kp in record.key_points]) + "\n\n"
+            if record.decisions:
+                summary_text += "DECISIONS:\n" + "\n".join([f"- {d}" for d in record.decisions]) + "\n\n"
+
             st.download_button(
                 "Download summary (.txt)",
-                data=("\n".join(record.summary)).encode("utf-8"),
+                data=summary_text.encode("utf-8"),
                 file_name=f"{record.id}_summary.txt",
             )
 
         with st.expander("Action Items", expanded=True):
-            st.markdown("\n".join([f"- {ai}" for ai in record.action_items]) or "_No action items._")
+            if record.action_items:
+                for ai in record.action_items:
+                    if isinstance(ai, dict):
+                        assignee = ai.get("assignee", "Unassigned")
+                        task = ai.get("task", "")
+                        deadline = ai.get("deadline")
+                        st.markdown(f"- **{assignee}**: {task}" + (f" (Due: {deadline})" if deadline else ""))
+                    else:
+                        st.markdown(f"- {ai}")
+            else:
+                st.markdown("_No action items._")
 
     with right:
         st.subheader("Meta")
@@ -148,8 +208,10 @@ def save_record(title: str, payload: Dict[str, Any]) -> MeetingRecord:
         created_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
         title=title or "Untitled Meeting",
         transcript=payload.get("transcript", ""),
-        summary=payload.get("summary", []),
+        summary_heading=payload.get("summary_heading", "Meeting Summary"),
+        key_points=payload.get("key_points", []),
         action_items=payload.get("action_items", []),
+        decisions=payload.get("decisions", []),
     )
     st.session_state.history.insert(0, rec)
     return rec
@@ -171,8 +233,9 @@ def history_panel(page_size: int = 5) -> None:
     for rec in history[start:end]:
         with st.container(border=True):
             st.markdown(f"**{rec.title}** · _{rec.created_at}_")
-            st.markdown("**Summary preview:**")
-            st.write("\n".join([f"- {s}" for s in rec.summary[:3]]) or "(empty)")
+            st.markdown(f"**{rec.summary_heading}**")
+            st.markdown("**Key Points Preview:**")
+            st.write("\n".join([f"- {s}" for s in rec.key_points[:3]]) or "(empty)")
             cols = st.columns(3)
             with cols[0]:
                 if st.button("View", key=f"view_{rec.id}"):
@@ -185,9 +248,15 @@ def history_panel(page_size: int = 5) -> None:
                     key=f"dl_t_{rec.id}",
                 )
             with cols[2]:
+                # Create summary text with new format
+                summary_text = f"{rec.summary_heading}\n\n"
+                summary_text += "KEY POINTS:\n" + "\n".join([f"- {kp}" for kp in rec.key_points]) + "\n\n"
+                if rec.decisions:
+                    summary_text += "DECISIONS:\n" + "\n".join([f"- {d}" for d in rec.decisions]) + "\n\n"
+
                 st.download_button(
                     "Download summary",
-                    data=("\n".join(rec.summary)).encode("utf-8"),
+                    data=summary_text.encode("utf-8"),
                     file_name=f"{rec.id}_summary.txt",
                     key=f"dl_s_{rec.id}",
                 )

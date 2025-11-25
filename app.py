@@ -1,6 +1,8 @@
 from __future__ import annotations
 import io
 import time
+import ssl
+import certifi
 from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -9,23 +11,38 @@ import tempfile
 
 import streamlit as st
 from meeting_summarizer import MeetingSummarizer
+from meeting_db import MeetingDatabase
+
+# Fix SSL certificate issues on macOS
+import urllib.request
+ssl._create_default_https_context = ssl._create_unverified_context
 
 st.set_page_config(page_title="Meeting Minion", page_icon="📝", layout="wide")
 device = "cpu"
 batch_size = 4 # reduce if low on GPU mem
 compute_type = "int8" # change to "int8" if low on GPU mem (may reduce accuracy)
 model_dir = "./model/whisperx_base"
-model = whisperx.load_model("base", device, compute_type=compute_type, download_root=model_dir)
-alignment_model, alignment_metadata = whisperx.load_align_model(language_code="en", device=device)
 hf_token = ""  # Add your Hugging Face token here if needed
 
-# Initialize the meeting summarizer (using Ollama with gpt-oss-120b)
+# Load models lazily to avoid SSL errors at startup
+model = None
+alignment_model = None
+alignment_metadata = None
+
+# Initialize the meeting summarizer (using Ollama with llama3.2)
 try:
-    summarizer = MeetingSummarizer()
+    summarizer = MeetingSummarizer(model_name="llama3.2:latest")
 except Exception as e:
     st.error(f"Failed to initialize MeetingSummarizer: {e}")
-    st.info("Make sure Ollama is running and gpt-oss-120b model is installed.")
+    st.info("Make sure Ollama is running and the model is installed.")
     summarizer = None
+
+# Initialize the meeting database
+try:
+    meeting_db = MeetingDatabase("meetings.db")
+except Exception as e:
+    st.error(f"Failed to initialize database: {e}")
+    meeting_db = None
 @dataclass
 class MeetingRecord:
     id: str
@@ -39,14 +56,30 @@ class MeetingRecord:
 
 
 def _init_state() -> None:
-    if "history" not in st.session_state:
-        st.session_state.history: List[MeetingRecord] = []
+    # Keep page state in session
     if "history_page" not in st.session_state:
         st.session_state.history_page = 0
+    # No longer need to store history in session state - it's in the database!
 
 
 def _now_id() -> str:
     return datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
+
+def _load_whisper_models():
+    """Load WhisperX models lazily on first use"""
+    global model, alignment_model, alignment_metadata
+
+    if model is None:
+        try:
+            with st.spinner("Loading WhisperX models (first time only)..."):
+                model = whisperx.load_model("base", device, compute_type=compute_type, download_root=model_dir)
+                alignment_model, alignment_metadata = whisperx.load_align_model(language_code="en", device=device)
+        except Exception as e:
+            st.error(f"Failed to load WhisperX models: {e}")
+            st.info("Audio transcription will not be available. You can still paste transcripts manually.")
+            return False
+    return True
 
 
 def run_pipeline(audio_bytes: Optional[bytes], transcript_text: Optional[str]) -> Dict[str, Any]:
@@ -108,27 +141,43 @@ def sidebar_uploader() -> Dict[str, Any]:
     st.subheader("Transcript")
     transcript_box = st.empty()
     if audio_file is not None and audio_file.name != st.session_state.audio_name:
-        st.session_state.audio_name = audio_file.name
-        st.audio(audio_file)
-        suffix = "." + audio_file.name.split(".")[-1].lower()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(audio_file.read())
-            tmp_path = tmp.name
+        # Load models on first use
+        if not _load_whisper_models():
+            st.error("Cannot process audio without WhisperX models.")
+        else:
+            st.session_state.audio_name = audio_file.name
+            st.audio(audio_file)
+            suffix = "." + audio_file.name.split(".")[-1].lower()
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                tmp.write(audio_file.read())
+                tmp_path = tmp.name
 
-        audio = whisperx.load_audio(tmp_path)
-        result = model.transcribe(audio, batch_size=batch_size)
-        transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
+            audio = whisperx.load_audio(tmp_path)
+            result = model.transcribe(audio, batch_size=batch_size)
+            transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
 
-        result = whisperx.align(result["segments"], alignment_model, alignment_metadata, audio, device, return_char_alignments=False)
-        transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
-        
-        diarize_model = whisperx.diarize.DiarizationPipeline("pyannote/speaker-diarization-3.0", use_auth_token=hf_token, device=device)
-        diarize_segments = diarize_model(audio, min_speakers=speakers, max_speakers=speakers)
-        result = whisperx.assign_word_speakers(diarize_segments, result)
-        transcript_text = "\n".join([(seg["speaker"] + ": " + seg["text"]) for seg in result["segments"]])
-        for i in range(speakers):
-            transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
-        transcript_box.code(transcript_text, language="text")
+            result = whisperx.align(result["segments"], alignment_model, alignment_metadata, audio, device, return_char_alignments=False)
+            transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
+
+            # Try speaker diarization if HuggingFace token is provided
+            if hf_token and hf_token.strip():
+                try:
+                    diarize_model = whisperx.diarize.DiarizationPipeline("pyannote/speaker-diarization-3.0", use_auth_token=hf_token, device=device)
+                    diarize_segments = diarize_model(audio, min_speakers=speakers, max_speakers=speakers)
+                    result = whisperx.assign_word_speakers(diarize_segments, result)
+                    transcript_text = "\n".join([(seg.get("speaker", "Unknown") + ": " + seg["text"]) for seg in result["segments"]])
+                    for i in range(speakers):
+                        transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
+                except Exception as e:
+                    st.warning(f"Speaker diarization not available (requires HuggingFace token): {str(e)[:100]}")
+                    # Fall back to transcript without speaker labels
+                    transcript_text = "\n".join([seg["text"] for seg in result["segments"]])
+            else:
+                # No token provided, skip diarization
+                st.info("Speaker diarization skipped (no HuggingFace token provided). Showing transcript only.")
+                transcript_text = "\n".join([seg["text"] for seg in result["segments"]])
+
+            transcript_box.code(transcript_text, language="text")
 
     for i in range(speakers):
         transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
@@ -203,9 +252,29 @@ def results_panel(record: MeetingRecord) -> None:
 
 
 def save_record(title: str, payload: Dict[str, Any]) -> MeetingRecord:
+    meeting_id = _now_id()
+    created_at = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+    # Save to database if available
+    if meeting_db is not None:
+        try:
+            meeting_db.save_meeting(
+                meeting_id=meeting_id,
+                title=title or "Untitled Meeting",
+                transcript=payload.get("transcript", ""),
+                summary_heading=payload.get("summary_heading", "Meeting Summary"),
+                key_points=payload.get("key_points", []),
+                action_items=payload.get("action_items", []),
+                decisions=payload.get("decisions", []),
+                created_at=created_at
+            )
+        except Exception as e:
+            st.error(f"Failed to save to database: {e}")
+
+    # Create record for immediate display
     rec = MeetingRecord(
-        id=_now_id(),
-        created_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        id=meeting_id,
+        created_at=created_at,
         title=title or "Untitled Meeting",
         transcript=payload.get("transcript", ""),
         summary_heading=payload.get("summary_heading", "Meeting Summary"),
@@ -213,24 +282,52 @@ def save_record(title: str, payload: Dict[str, Any]) -> MeetingRecord:
         action_items=payload.get("action_items", []),
         decisions=payload.get("decisions", []),
     )
-    st.session_state.history.insert(0, rec)
     return rec
 
 
 def history_panel(page_size: int = 5) -> None:
     st.subheader("History")
-    history = st.session_state.history
-    if not history:
-        st.info("No past meetings.")
+
+    # Load history from database if available
+    if meeting_db is None:
+        st.warning("Database not available. History cannot be displayed.")
         return
 
-    total = len(history)
-    start = st.session_state.history_page * page_size
-    end = min(start + page_size, total)
+    try:
+        total = meeting_db.count_meetings()
+        if total == 0:
+            st.info("No past meetings.")
+            return
 
-    st.caption(f"Showing {start+1}–{end} of {total}")
+        # Load paginated meetings from database
+        offset = st.session_state.history_page * page_size
+        history_data = meeting_db.get_all_meetings(limit=page_size, offset=offset)
 
-    for rec in history[start:end]:
+        start = offset
+        end = min(start + len(history_data), total)
+
+        st.caption(f"Showing {start+1}–{end} of {total}")
+
+        # Convert database records to MeetingRecord objects for display
+        history = []
+        for db_record in history_data:
+            # Create MeetingRecord from database data
+            rec = MeetingRecord(
+                id=db_record["id"],
+                created_at=db_record["created_at"],
+                title=db_record["title"],
+                transcript=db_record["transcript"],
+                summary_heading=db_record["summary_heading"],
+                key_points=db_record["key_points"],
+                action_items=db_record["action_items"],
+                decisions=db_record["decisions"]
+            )
+            history.append(rec)
+    except Exception as e:
+        st.error(f"Failed to load history: {e}")
+        return
+
+    for rec in history:
         with st.container(border=True):
             st.markdown(f"**{rec.title}** · _{rec.created_at}_")
             st.markdown(f"**{rec.summary_heading}**")

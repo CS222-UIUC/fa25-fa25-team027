@@ -73,13 +73,49 @@ python3
 
 ## Project Structure
 
-- `db_func.py` - Core database wrapper library
-- `test_db.py` - Complete test suite demonstrating all functionality
+- `db_func.py` - Core database wrapper library (low-level CRUD operations)
+- `meeting_db.py` - Meeting-specific database layer (uses db_func.py)
+- `app.py` - Streamlit web application (uses meeting_db.py for persistence)
+- `meeting_summarizer.py` - LLM-based meeting summarization
+- `test_db.py` - Manual test suite for db_func
+- `test_db_func.py` - Automated unit tests for db_func (32 tests)
+- `test_meeting_db.py` - Integration tests for meeting_db (20 tests)
+- `test_meeting_summarizer.py` - Unit tests for summarizer (12 tests)
+- `test_e2e_persistence.py` - End-to-end persistence test
 - `.gitignore` - Excludes *.db files and __pycache__
 
 
 
-## about the project
+## Database Integration
+
+### Meeting Database (`meeting_db.py`)
+
+The `MeetingDatabase` class provides persistent storage for meeting records:
+
+**Schema:**
+- `meetings` table: id, created_at, title, transcript, summary_heading
+- `key_points` table: meeting_id (FK), point, point_order
+- `action_items` table: meeting_id (FK), assignee, task, deadline, item_order
+- `decisions` table: meeting_id (FK), decision, decision_order
+
+**Key Features:**
+- Automatic schema initialization
+- Preserves order of key points, action items, and decisions
+- SQL-based pagination (LIMIT/OFFSET)
+- Cascade delete support
+- Column name normalization (db_func uppercases internally, meeting_db normalizes to lowercase)
+
+**Usage in app.py:**
+- Meetings are saved to `meetings.db` when processed
+- History panel loads from database with pagination
+- Data persists across app restarts (no session state needed)
+
+**Testing:**
+- 20 integration tests in `test_meeting_db.py` (100% pass rate)
+- End-to-end persistence test in `test_e2e_persistence.py`
+- Verifies data integrity across close/reopen cycles
+
+## About the project
 AI Usage Disclosure
 Tool Used: ChatGPT
 Purpose: I used ChatGPT to help brainstorm the initial project idea ("Meeting Minion")

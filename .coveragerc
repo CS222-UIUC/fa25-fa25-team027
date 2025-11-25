@@ -1,0 +1,58 @@
+[run]
+# Coverage configuration for Meeting Minion project
+
+source = .
+omit =
+    # Virtual environment
+    venv/*
+    */venv/*
+
+    # Test files
+    test_*.py
+    *_test.py
+    */tests/*
+
+    # Configuration files
+    setup.py
+    */setup.py
+
+    # Model directories
+    model/*
+    */model/*
+
+    # Cache and build directories
+    __pycache__/*
+    */__pycache__/*
+    *.pyc
+    .pytest_cache/*
+    htmlcov/*
+    .coverage
+
+[report]
+# Reporting options
+precision = 2
+show_missing = True
+skip_covered = False
+
+# Exclude lines from coverage
+exclude_lines =
+    # Standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code
+    def __repr__
+
+    # Don't complain if tests don't hit defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run
+    if __name__ == .__main__.:
+    if __name__ == "__main__":
+
+    # Don't complain about abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+
+[html]
+directory = htmlcov

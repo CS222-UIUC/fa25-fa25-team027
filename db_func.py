@@ -1,6 +1,7 @@
-'''
+"""
 Contains all the CRUD functions of a db + table.
-'''
+"""
+
 import sqlite3
 
 
@@ -9,12 +10,14 @@ def create_database(name: str):
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def connect_database(path: str):
     conn = sqlite3.connect(f"{path}")
     conn.row_factory = sqlite3.Row
     return conn
 
-'''
+
+"""
 spec: dictionary: column_name : [datatype, specifiers]. + Primary Key : column_name + Foreign Key : [(column name,ref_table)]
 
 any column with primary key will automatically have the NOT NULL , UNIQUE charecteristic added to it.
@@ -29,24 +32,34 @@ If we have a datatype(arg) .. make sure to add in the args too.
 
 all column names are automatically uppercased (handled inside the functions)
 
-'''
+"""
+
+
 def create_table(conn, spec, name):
     f_string = ""
-    for col,type_list in spec.items():
-        if(col == "Primary Key" or col == "Foreign Key"):
+    for col, type_list in spec.items():
+        if col == "Primary Key" or col == "Foreign Key":
             continue
 
         f_string += col.upper() + " " + type_list[0].upper() + " "
-        if("Primary Key" in spec and spec["Primary Key"] == col):
+        if "Primary Key" in spec and spec["Primary Key"] == col:
             f_string += "NOT NULL UNIQUE PRIMARY KEY,\n"
-        elif(len(type_list) > 1):
+        elif len(type_list) > 1:
             f_string += type_list[1] + ",\n"
         else:
             f_string += ",\n"
 
-    if("Foreign Key" in spec):
-        for (col,ref) in spec["Foreign Key"]:
-            f_string += "FOREIGN KEY (" + col.upper() + ") REFERENCES " + ref.upper() + "(" + col.upper() + "),\n"
+    if "Foreign Key" in spec:
+        for col, ref in spec["Foreign Key"]:
+            f_string += (
+                "FOREIGN KEY ("
+                + col.upper()
+                + ") REFERENCES "
+                + ref.upper()
+                + "("
+                + col.upper()
+                + "),\n"
+            )
 
     f_string = f_string[:-2] + "\n"
 
@@ -57,7 +70,7 @@ def create_table(conn, spec, name):
     return
 
 
-def drop_table(conn,name):
+def drop_table(conn, name):
     query = "DROP TABLE IF EXISTS " + name.upper()
     cursor = conn.cursor()
     cursor.execute(query)
@@ -65,15 +78,17 @@ def drop_table(conn,name):
     return
 
 
-'''
+"""
 Insert (by value) -> dictionary based insert.
-'''
-def single_insert(conn,cmd_dict,name):
+"""
+
+
+def single_insert(conn, cmd_dict, name):
     col_str = ""
     val_str = ""
     val_list = []
 
-    for (col,val) in cmd_dict.items():
+    for col, val in cmd_dict.items():
         col_str += col.upper() + " ,"
         val_str += "?,"
         val_list.append(val)
@@ -89,12 +104,14 @@ def single_insert(conn,cmd_dict,name):
     return
 
 
-'''
+"""
 Select query -> for now we allow where + orderby commands.
-'''
-def select(conn,col_list,where_clause,order_by,name):
+"""
+
+
+def select(conn, col_list, where_clause, order_by, name):
     q = "SELECT "
-    if(col_list == None or len(col_list) == 0):
+    if col_list == None or len(col_list) == 0:
         q += "*"
     else:
         for c in col_list:
@@ -104,19 +121,19 @@ def select(conn,col_list,where_clause,order_by,name):
     q += " FROM " + name.upper()
 
     vals = []
-    if(where_clause != None):
-        if(type(where_clause) == dict):
+    if where_clause != None:
+        if type(where_clause) == dict:
             q += " WHERE "
-            for (k,v) in where_clause.items():
+            for k, v in where_clause.items():
                 q += k.upper() + " = ? AND "
                 vals.append(v)
             q = q[:-5]
         else:
             q += " WHERE " + where_clause
 
-    if(order_by != None):
+    if order_by != None:
         q += " ORDER BY "
-        if(type(order_by) == list):
+        if type(order_by) == list:
             for c in order_by:
                 q += c.upper() + ","
             q = q[:-1]
@@ -126,7 +143,7 @@ def select(conn,col_list,where_clause,order_by,name):
     q += ";"
 
     cursor = conn.cursor()
-    if(len(vals) > 0):
+    if len(vals) > 0:
         cursor.execute(q, tuple(vals))
     else:
         cursor.execute(q)
@@ -135,22 +152,24 @@ def select(conn,col_list,where_clause,order_by,name):
     return rows
 
 
-'''
+"""
 Update rows -> where claus allowed
-'''
+"""
+
+
 def update(conn, col_list, where_clause, name):
     q = "UPDATE " + name.upper() + " SET "
     vals = []
 
-    for (k,v) in col_list.items():
+    for k, v in col_list.items():
         q += k.upper() + " = ?,"
         vals.append(v)
     q = q[:-1]
 
-    if(where_clause != None):
-        if(type(where_clause) == dict):
+    if where_clause != None:
+        if type(where_clause) == dict:
             q += " WHERE "
-            for (k,v) in where_clause.items():
+            for k, v in where_clause.items():
                 q += k.upper() + " = ? AND "
                 vals.append(v)
             q = q[:-5]
@@ -167,17 +186,19 @@ def update(conn, col_list, where_clause, name):
     return rc
 
 
-'''
+"""
 Delete rows ->
-'''
-def delete(conn, cmd_dict , name):
+"""
+
+
+def delete(conn, cmd_dict, name):
     q = "DELETE FROM " + name.upper()
     vals = []
 
-    if(cmd_dict != None):
-        if(type(cmd_dict) == dict):
+    if cmd_dict != None:
+        if type(cmd_dict) == dict:
             q += " WHERE "
-            for (k,v) in cmd_dict.items():
+            for k, v in cmd_dict.items():
                 q += k.upper() + " = ? AND "
                 vals.append(v)
             q = q[:-5]
@@ -187,7 +208,7 @@ def delete(conn, cmd_dict , name):
     q += ";"
 
     cursor = conn.cursor()
-    if(len(vals) > 0):
+    if len(vals) > 0:
         cursor.execute(q, tuple(vals))
     else:
         cursor.execute(q)
@@ -195,5 +216,3 @@ def delete(conn, cmd_dict , name):
     rc = cursor.rowcount
     cursor.close()
     return rc
-
-

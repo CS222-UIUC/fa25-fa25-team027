@@ -1,7 +1,7 @@
-'''
+"""
 Integration tests for meeting_db module
 Tests the MeetingDatabase class and its interaction with db_func
-'''
+"""
 
 import pytest
 import os
@@ -37,6 +37,7 @@ class TestMeetingDatabaseInit:
         """Test that all required tables exist"""
         # Try to query each table
         import db_func
+
         # Should not raise exceptions
         db_func.select(temp_db.conn, [], None, None, "meetings")
         db_func.select(temp_db.conn, [], None, None, "key_points")
@@ -55,10 +56,8 @@ class TestSaveMeeting:
             transcript="John: Hello\nSarah: Hi",
             summary_heading="Test Summary",
             key_points=["Point 1", "Point 2"],
-            action_items=[
-                {"assignee": "John", "task": "Task 1", "deadline": "Friday"}
-            ],
-            decisions=["Decision 1"]
+            action_items=[{"assignee": "John", "task": "Task 1", "deadline": "Friday"}],
+            decisions=["Decision 1"],
         )
 
         assert meeting_id == "test123"
@@ -72,7 +71,7 @@ class TestSaveMeeting:
             summary_heading="Quick Sync",
             key_points=[],
             action_items=[],
-            decisions=[]
+            decisions=[],
         )
 
         assert meeting_id == "test456"
@@ -95,9 +94,9 @@ class TestSaveMeeting:
             action_items=[
                 {"assignee": "Alice", "task": "Task A", "deadline": "Monday"},
                 {"assignee": "Bob", "task": "Task B", "deadline": "Tuesday"},
-                {"assignee": "Carol", "task": "Task C", "deadline": None}
+                {"assignee": "Carol", "task": "Task C", "deadline": None},
             ],
-            decisions=["Decision A", "Decision B", "Decision C"]
+            decisions=["Decision A", "Decision B", "Decision C"],
         )
 
         assert meeting_id == "test789"
@@ -125,7 +124,7 @@ class TestGetMeeting:
             summary_heading="Summary",
             key_points=["Point"],
             action_items=[{"assignee": "Test", "task": "Do something", "deadline": None}],
-            decisions=[]
+            decisions=[],
         )
 
         # Retrieve
@@ -153,9 +152,9 @@ class TestGetMeeting:
             action_items=[
                 {"assignee": "A", "task": "Task 1", "deadline": None},
                 {"assignee": "B", "task": "Task 2", "deadline": None},
-                {"assignee": "C", "task": "Task 3", "deadline": None}
+                {"assignee": "C", "task": "Task 3", "deadline": None},
             ],
-            decisions=["Dec 1", "Dec 2"]
+            decisions=["Dec 1", "Dec 2"],
         )
 
         meeting = temp_db.get_meeting("order_test")
@@ -185,7 +184,7 @@ class TestGetAllMeetings:
                 summary_heading=f"Summary {i}",
                 key_points=[f"Point {i}"],
                 action_items=[],
-                decisions=[]
+                decisions=[],
             )
 
         meetings = temp_db.get_all_meetings()
@@ -202,7 +201,7 @@ class TestGetAllMeetings:
                 summary_heading=f"Summary {i}",
                 key_points=[],
                 action_items=[],
-                decisions=[]
+                decisions=[],
             )
 
         # Get first 5
@@ -221,6 +220,7 @@ class TestGetAllMeetings:
     def test_get_all_meetings_ordering(self, temp_db):
         """Test that meetings are returned in correct order (newest first)"""
         import time
+
         # Add meetings with slight delay to ensure different timestamps
         for i in range(3):
             temp_db.save_meeting(
@@ -231,7 +231,7 @@ class TestGetAllMeetings:
                 key_points=[],
                 action_items=[],
                 decisions=[],
-                created_at=f"2024-01-{i+1:02d}T10:00:00Z"
+                created_at=f"2024-01-{i+1:02d}T10:00:00Z",
             )
             time.sleep(0.01)
 
@@ -261,7 +261,7 @@ class TestCountMeetings:
                 summary_heading="",
                 key_points=[],
                 action_items=[],
-                decisions=[]
+                decisions=[],
             )
 
         assert temp_db.count_meetings() == 7
@@ -280,7 +280,7 @@ class TestDeleteMeeting:
             summary_heading="",
             key_points=["Point"],
             action_items=[{"assignee": "A", "task": "B", "deadline": None}],
-            decisions=["Dec"]
+            decisions=["Dec"],
         )
 
         # Verify it exists
@@ -311,19 +311,13 @@ class TestDeleteMeeting:
             transcript="",
             summary_heading="",
             key_points=["Point 1", "Point 2"],
-            action_items=[
-                {"assignee": "A", "task": "Task", "deadline": None}
-            ],
-            decisions=["Decision"]
+            action_items=[{"assignee": "A", "task": "Task", "deadline": None}],
+            decisions=["Decision"],
         )
 
         # Verify related records exist
         points = db_func.select(
-            temp_db.conn,
-            [],
-            {"meeting_id": "cascade_test"},
-            None,
-            "key_points"
+            temp_db.conn, [], {"meeting_id": "cascade_test"}, None, "key_points"
         )
         assert len(points) == 2
 
@@ -332,11 +326,7 @@ class TestDeleteMeeting:
 
         # Verify related records are gone
         points = db_func.select(
-            temp_db.conn,
-            [],
-            {"meeting_id": "cascade_test"},
-            None,
-            "key_points"
+            temp_db.conn, [], {"meeting_id": "cascade_test"}, None, "key_points"
         )
         assert len(points) == 0
 
@@ -355,7 +345,7 @@ class TestDataIntegrity:
             summary_heading="Summary",
             key_points=[special_text],
             action_items=[{"assignee": "Test", "task": special_text, "deadline": None}],
-            decisions=[special_text]
+            decisions=[special_text],
         )
 
         meeting = temp_db.get_meeting("special_chars")
@@ -373,7 +363,7 @@ class TestDataIntegrity:
             summary_heading="",
             key_points=[""],
             action_items=[{"assignee": "", "task": "", "deadline": ""}],
-            decisions=[""]
+            decisions=[""],
         )
 
         meeting = temp_db.get_meeting("empty_test")
@@ -388,10 +378,8 @@ class TestDataIntegrity:
             transcript="Test",
             summary_heading="Test",
             key_points=[],
-            action_items=[
-                {"assignee": "Test", "task": "Do something", "deadline": None}
-            ],
-            decisions=[]
+            action_items=[{"assignee": "Test", "task": "Do something", "deadline": None}],
+            decisions=[],
         )
 
         meeting = temp_db.get_meeting("none_test")

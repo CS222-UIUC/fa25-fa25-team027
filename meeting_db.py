@@ -1,7 +1,7 @@
-'''
+"""
 Meeting Database Module
 Handles persistent storage of meeting records using SQLite via db_func
-'''
+"""
 
 import db_func
 from typing import List, Dict, Any, Optional
@@ -46,7 +46,7 @@ class MeetingDatabase:
             "title": ["TEXT", "NOT NULL"],
             "transcript": ["TEXT"],
             "summary_heading": ["TEXT"],
-            "Primary Key": "id"
+            "Primary Key": "id",
         }
         db_func.create_table(self.conn, meetings_spec, "meetings")
 
@@ -57,7 +57,7 @@ class MeetingDatabase:
             "point": ["TEXT", "NOT NULL"],
             "point_order": ["INTEGER", "NOT NULL"],
             "Primary Key": "id",
-            "Foreign Key": [("meeting_id", "meetings")]
+            "Foreign Key": [("meeting_id", "meetings")],
         }
         db_func.create_table(self.conn, key_points_spec, "key_points")
 
@@ -70,7 +70,7 @@ class MeetingDatabase:
             "deadline": ["TEXT"],
             "item_order": ["INTEGER", "NOT NULL"],
             "Primary Key": "id",
-            "Foreign Key": [("meeting_id", "meetings")]
+            "Foreign Key": [("meeting_id", "meetings")],
         }
         db_func.create_table(self.conn, action_items_spec, "action_items")
 
@@ -81,7 +81,7 @@ class MeetingDatabase:
             "decision": ["TEXT", "NOT NULL"],
             "decision_order": ["INTEGER", "NOT NULL"],
             "Primary Key": "id",
-            "Foreign Key": [("meeting_id", "meetings")]
+            "Foreign Key": [("meeting_id", "meetings")],
         }
         db_func.create_table(self.conn, decisions_spec, "decisions")
 
@@ -94,7 +94,7 @@ class MeetingDatabase:
         key_points: List[str],
         action_items: List[Dict[str, Any]],
         decisions: List[str],
-        created_at: Optional[str] = None
+        created_at: Optional[str] = None,
     ) -> str:
         """
         Save a complete meeting record to the database
@@ -113,7 +113,9 @@ class MeetingDatabase:
             The meeting_id that was saved
         """
         if created_at is None:
-            created_at = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+            created_at = (
+                datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+            )
 
         # Insert main meeting record
         meeting_data = {
@@ -121,17 +123,13 @@ class MeetingDatabase:
             "created_at": created_at,
             "title": title,
             "transcript": transcript,
-            "summary_heading": summary_heading
+            "summary_heading": summary_heading,
         }
         db_func.single_insert(self.conn, meeting_data, "meetings")
 
         # Insert key points
         for idx, point in enumerate(key_points):
-            point_data = {
-                "meeting_id": meeting_id,
-                "point": point,
-                "point_order": idx
-            }
+            point_data = {"meeting_id": meeting_id, "point": point, "point_order": idx}
             db_func.single_insert(self.conn, point_data, "key_points")
 
         # Insert action items
@@ -141,17 +139,13 @@ class MeetingDatabase:
                 "assignee": item.get("assignee", "Unassigned"),
                 "task": item.get("task", ""),
                 "deadline": item.get("deadline"),
-                "item_order": idx
+                "item_order": idx,
             }
             db_func.single_insert(self.conn, action_data, "action_items")
 
         # Insert decisions
         for idx, decision in enumerate(decisions):
-            decision_data = {
-                "meeting_id": meeting_id,
-                "decision": decision,
-                "decision_order": idx
-            }
+            decision_data = {"meeting_id": meeting_id, "decision": decision, "decision_order": idx}
             db_func.single_insert(self.conn, decision_data, "decisions")
 
         return meeting_id
@@ -167,13 +161,7 @@ class MeetingDatabase:
             Dictionary with meeting data or None if not found
         """
         # Get main meeting record
-        meetings = db_func.select(
-            self.conn,
-            [],
-            {"id": meeting_id},
-            None,
-            "meetings"
-        )
+        meetings = db_func.select(self.conn, [], {"id": meeting_id}, None, "meetings")
 
         if not meetings:
             return None
@@ -183,48 +171,33 @@ class MeetingDatabase:
 
         # Get key points (note: db_func uppercases all column names)
         points_rows = db_func.select(
-            self.conn,
-            [],
-            {"meeting_id": meeting_id},
-            "point_order",
-            "key_points"
+            self.conn, [], {"meeting_id": meeting_id}, "point_order", "key_points"
         )
         meeting["key_points"] = [dict(row)["POINT"] for row in points_rows]
 
         # Get action items
         action_rows = db_func.select(
-            self.conn,
-            [],
-            {"meeting_id": meeting_id},
-            "item_order",
-            "action_items"
+            self.conn, [], {"meeting_id": meeting_id}, "item_order", "action_items"
         )
         meeting["action_items"] = [
             {
                 "assignee": dict(row)["ASSIGNEE"],
                 "task": dict(row)["TASK"],
-                "deadline": dict(row)["DEADLINE"]
+                "deadline": dict(row)["DEADLINE"],
             }
             for row in action_rows
         ]
 
         # Get decisions
         decision_rows = db_func.select(
-            self.conn,
-            [],
-            {"meeting_id": meeting_id},
-            "decision_order",
-            "decisions"
+            self.conn, [], {"meeting_id": meeting_id}, "decision_order", "decisions"
         )
         meeting["decisions"] = [dict(row)["DECISION"] for row in decision_rows]
 
         return meeting
 
     def get_all_meetings(
-        self,
-        limit: Optional[int] = None,
-        offset: int = 0,
-        order_by: str = "created_at DESC"
+        self, limit: Optional[int] = None, offset: int = 0, order_by: str = "created_at DESC"
     ) -> List[Dict[str, Any]]:
         """
         Retrieve all meetings with optional pagination
@@ -244,13 +217,7 @@ class MeetingDatabase:
             order_clause = order_by
 
         # Get meetings
-        meeting_rows = db_func.select(
-            self.conn,
-            [],
-            None,
-            order_clause,
-            "meetings"
-        )
+        meeting_rows = db_func.select(self.conn, [], None, order_clause, "meetings")
 
         # For each meeting, fetch related data
         meetings = []
@@ -261,38 +228,26 @@ class MeetingDatabase:
 
             # Get key points (note: db_func uppercases all column names)
             points_rows = db_func.select(
-                self.conn,
-                [],
-                {"meeting_id": meeting_id},
-                "point_order",
-                "key_points"
+                self.conn, [], {"meeting_id": meeting_id}, "point_order", "key_points"
             )
             meeting_dict["key_points"] = [dict(r)["POINT"] for r in points_rows]
 
             # Get action items
             action_rows = db_func.select(
-                self.conn,
-                [],
-                {"meeting_id": meeting_id},
-                "item_order",
-                "action_items"
+                self.conn, [], {"meeting_id": meeting_id}, "item_order", "action_items"
             )
             meeting_dict["action_items"] = [
                 {
                     "assignee": dict(r)["ASSIGNEE"],
                     "task": dict(r)["TASK"],
-                    "deadline": dict(r)["DEADLINE"]
+                    "deadline": dict(r)["DEADLINE"],
                 }
                 for r in action_rows
             ]
 
             # Get decisions
             decision_rows = db_func.select(
-                self.conn,
-                [],
-                {"meeting_id": meeting_id},
-                "decision_order",
-                "decisions"
+                self.conn, [], {"meeting_id": meeting_id}, "decision_order", "decisions"
             )
             meeting_dict["decisions"] = [dict(r)["DECISION"] for r in decision_rows]
 
@@ -352,9 +307,9 @@ if __name__ == "__main__":
         key_points=["Discussed sprint goals", "Assigned tasks to team members"],
         action_items=[
             {"assignee": "Sarah", "task": "Implement login UI", "deadline": "Friday"},
-            {"assignee": "Mike", "task": "Setup OAuth", "deadline": "Wednesday"}
+            {"assignee": "Mike", "task": "Setup OAuth", "deadline": "Wednesday"},
         ],
-        decisions=["Using OAuth for authentication", "Targeting Friday release"]
+        decisions=["Using OAuth for authentication", "Targeting Friday release"],
     )
     print(f"✓ Saved meeting {meeting_id}")
 

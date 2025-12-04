@@ -15,12 +15,13 @@ from meeting_db import MeetingDatabase
 
 # Fix SSL certificate issues on macOS
 import urllib.request
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 st.set_page_config(page_title="Meeting Minion", page_icon="📝", layout="wide")
 device = "cpu"
-batch_size = 4 # reduce if low on GPU mem
-compute_type = "int8" # change to "int8" if low on GPU mem (may reduce accuracy)
+batch_size = 4  # reduce if low on GPU mem
+compute_type = "int8"  # change to "int8" if low on GPU mem (may reduce accuracy)
 model_dir = "./model/whisperx_base"
 hf_token = ""  # Add your Hugging Face token here if needed
 
@@ -43,6 +44,8 @@ try:
 except Exception as e:
     st.error(f"Failed to initialize database: {e}")
     meeting_db = None
+
+
 @dataclass
 class MeetingRecord:
     id: str
@@ -73,11 +76,17 @@ def _load_whisper_models():
     if model is None:
         try:
             with st.spinner("Loading WhisperX models (first time only)..."):
-                model = whisperx.load_model("base", device, compute_type=compute_type, download_root=model_dir)
-                alignment_model, alignment_metadata = whisperx.load_align_model(language_code="en", device=device)
+                model = whisperx.load_model(
+                    "base", device, compute_type=compute_type, download_root=model_dir
+                )
+                alignment_model, alignment_metadata = whisperx.load_align_model(
+                    language_code="en", device=device
+                )
         except Exception as e:
             st.error(f"Failed to load WhisperX models: {e}")
-            st.info("Audio transcription will not be available. You can still paste transcripts manually.")
+            st.info(
+                "Audio transcription will not be available. You can still paste transcripts manually."
+            )
             return False
     return True
 
@@ -98,7 +107,7 @@ def run_pipeline(audio_bytes: Optional[bytes], transcript_text: Optional[str]) -
             "summary_heading": "Meeting Summary (Summarizer unavailable)",
             "key_points": ["Summarizer not initialized. Please check Ollama setup."],
             "action_items": [],
-            "decisions": []
+            "decisions": [],
         }
 
     # Use summarizer with fallback for graceful error handling
@@ -110,7 +119,7 @@ def run_pipeline(audio_bytes: Optional[bytes], transcript_text: Optional[str]) -
             "summary_heading": summary_result.get("summary_heading", "Meeting Summary"),
             "key_points": summary_result.get("key_points", []),
             "action_items": summary_result.get("action_items", []),
-            "decisions": summary_result.get("decisions", [])
+            "decisions": summary_result.get("decisions", []),
         }
     except Exception as e:
         st.error(f"Error during summarization: {e}")
@@ -119,8 +128,9 @@ def run_pipeline(audio_bytes: Optional[bytes], transcript_text: Optional[str]) -
             "summary_heading": "Meeting Summary (Error)",
             "key_points": [f"Error: {str(e)}"],
             "action_items": [],
-            "decisions": []
+            "decisions": [],
         }
+
 
 def sidebar_uploader() -> Dict[str, Any]:
     st.sidebar.header("Upload")
@@ -132,10 +142,12 @@ def sidebar_uploader() -> Dict[str, Any]:
         "Audio file (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"], accept_multiple_files=False
     )
 
-    speakers = st.sidebar.slider("Pick the number of speakers in the audio", min_value = 1, max_value = 5)
+    speakers = st.sidebar.slider(
+        "Pick the number of speakers in the audio", min_value=1, max_value=5
+    )
     speaker_names = ["" for _ in range(speakers)]
     for i in range(speakers):
-        speaker_names[i] = st.sidebar.text_input("Speaker {}".format(i+1))
+        speaker_names[i] = st.sidebar.text_input("Speaker {}".format(i + 1))
 
     transcript_text = ""
     st.subheader("Transcript")
@@ -154,43 +166,78 @@ def sidebar_uploader() -> Dict[str, Any]:
 
             audio = whisperx.load_audio(tmp_path)
             result = model.transcribe(audio, batch_size=batch_size)
-            transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
+            transcript_box.code(
+                "\n".join([seg["text"] for seg in result["segments"]]), language="text"
+            )
 
-            result = whisperx.align(result["segments"], alignment_model, alignment_metadata, audio, device, return_char_alignments=False)
-            transcript_box.code("\n".join([seg["text"] for seg in result["segments"]]), language="text")
+            result = whisperx.align(
+                result["segments"],
+                alignment_model,
+                alignment_metadata,
+                audio,
+                device,
+                return_char_alignments=False,
+            )
+            transcript_box.code(
+                "\n".join([seg["text"] for seg in result["segments"]]), language="text"
+            )
 
             # Try speaker diarization if HuggingFace token is provided
             if hf_token and hf_token.strip():
                 try:
-                    diarize_model = whisperx.diarize.DiarizationPipeline("pyannote/speaker-diarization-3.0", use_auth_token=hf_token, device=device)
-                    diarize_segments = diarize_model(audio, min_speakers=speakers, max_speakers=speakers)
+                    diarize_model = whisperx.diarize.DiarizationPipeline(
+                        "pyannote/speaker-diarization-3.0", use_auth_token=hf_token, device=device
+                    )
+                    diarize_segments = diarize_model(
+                        audio, min_speakers=speakers, max_speakers=speakers
+                    )
                     result = whisperx.assign_word_speakers(diarize_segments, result)
-                    transcript_text = "\n".join([(seg.get("speaker", "Unknown") + ": " + seg["text"]) for seg in result["segments"]])
+                    transcript_text = "\n".join(
+                        [
+                            (seg.get("speaker", "Unknown") + ": " + seg["text"])
+                            for seg in result["segments"]
+                        ]
+                    )
                     for i in range(speakers):
-                        transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
+                        transcript_text = transcript_text.replace(
+                            "SPEAKER_0" + str(i), speaker_names[i]
+                        )
                 except Exception as e:
-                    st.warning(f"Speaker diarization not available (requires HuggingFace token): {str(e)[:100]}")
+                    st.warning(
+                        f"Speaker diarization not available (requires HuggingFace token): {str(e)[:100]}"
+                    )
                     # Fall back to transcript without speaker labels
                     transcript_text = "\n".join([seg["text"] for seg in result["segments"]])
             else:
                 # No token provided, skip diarization
-                st.info("Speaker diarization skipped (no HuggingFace token provided). Showing transcript only.")
+                st.info(
+                    "Speaker diarization skipped (no HuggingFace token provided). Showing transcript only."
+                )
                 transcript_text = "\n".join([seg["text"] for seg in result["segments"]])
 
             transcript_box.code(transcript_text, language="text")
 
     for i in range(speakers):
-        transcript_text = transcript_text.replace("SPEAKER_0"+str(i), speaker_names[i])
+        transcript_text = transcript_text.replace("SPEAKER_0" + str(i), speaker_names[i])
     transcript_box.code(transcript_text, language="text")
-        
-    st.sidebar.markdown("**OR** paste a transcript:")
-    transcript_text = st.sidebar.text_area("Transcript", placeholder="Paste transcript text here…", value=transcript_text, height=160)
 
-    title = st.sidebar.text_input("Meeting title", value=f"Meeting {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    st.sidebar.markdown("**OR** paste a transcript:")
+    transcript_text = st.sidebar.text_area(
+        "Transcript", placeholder="Paste transcript text here…", value=transcript_text, height=160
+    )
+
+    title = st.sidebar.text_input(
+        "Meeting title", value=f"Meeting {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+    )
 
     process = st.sidebar.button("Process", type="primary", use_container_width=True)
 
-    return {"audio_file": audio_file, "transcript_text": transcript_text.strip() or None, "title": title.strip(), "process": process}
+    return {
+        "audio_file": audio_file,
+        "transcript_text": transcript_text.strip() or None,
+        "title": title.strip(),
+        "process": process,
+    }
 
 
 def progress_runner(label: str = "Processing") -> None:
@@ -210,12 +257,16 @@ def results_panel(record: MeetingRecord) -> None:
         with st.expander("Transcript", expanded=True):
             st.code(record.transcript or "", language="text")
             st.download_button(
-                "Download transcript", data=record.transcript.encode("utf-8"), file_name=f"{record.id}_transcript.txt"
+                "Download transcript",
+                data=record.transcript.encode("utf-8"),
+                file_name=f"{record.id}_transcript.txt",
             )
 
         with st.expander("Summary: " + record.summary_heading, expanded=True):
             st.markdown("**Key Points:**")
-            st.markdown("\n".join([f"- {item}" for item in record.key_points]) or "_No key points._")
+            st.markdown(
+                "\n".join([f"- {item}" for item in record.key_points]) or "_No key points._"
+            )
 
             if record.decisions:
                 st.markdown("\n**Decisions Made:**")
@@ -223,9 +274,13 @@ def results_panel(record: MeetingRecord) -> None:
 
             # Create downloadable summary
             summary_text = f"{record.summary_heading}\n\n"
-            summary_text += "KEY POINTS:\n" + "\n".join([f"- {kp}" for kp in record.key_points]) + "\n\n"
+            summary_text += (
+                "KEY POINTS:\n" + "\n".join([f"- {kp}" for kp in record.key_points]) + "\n\n"
+            )
             if record.decisions:
-                summary_text += "DECISIONS:\n" + "\n".join([f"- {d}" for d in record.decisions]) + "\n\n"
+                summary_text += (
+                    "DECISIONS:\n" + "\n".join([f"- {d}" for d in record.decisions]) + "\n\n"
+                )
 
             st.download_button(
                 "Download summary (.txt)",
@@ -240,7 +295,10 @@ def results_panel(record: MeetingRecord) -> None:
                         assignee = ai.get("assignee", "Unassigned")
                         task = ai.get("task", "")
                         deadline = ai.get("deadline")
-                        st.markdown(f"- **{assignee}**: {task}" + (f" (Due: {deadline})" if deadline else ""))
+                        st.markdown(
+                            f"- **{assignee}**: {task}"
+                            + (f" (Due: {deadline})" if deadline else "")
+                        )
                     else:
                         st.markdown(f"- {ai}")
             else:
@@ -266,7 +324,7 @@ def save_record(title: str, payload: Dict[str, Any]) -> MeetingRecord:
                 key_points=payload.get("key_points", []),
                 action_items=payload.get("action_items", []),
                 decisions=payload.get("decisions", []),
-                created_at=created_at
+                created_at=created_at,
             )
         except Exception as e:
             st.error(f"Failed to save to database: {e}")
@@ -320,7 +378,7 @@ def history_panel(page_size: int = 5) -> None:
                 summary_heading=db_record["summary_heading"],
                 key_points=db_record["key_points"],
                 action_items=db_record["action_items"],
-                decisions=db_record["decisions"]
+                decisions=db_record["decisions"],
             )
             history.append(rec)
     except Exception as e:
@@ -347,9 +405,13 @@ def history_panel(page_size: int = 5) -> None:
             with cols[2]:
                 # Create summary text with new format
                 summary_text = f"{rec.summary_heading}\n\n"
-                summary_text += "KEY POINTS:\n" + "\n".join([f"- {kp}" for kp in rec.key_points]) + "\n\n"
+                summary_text += (
+                    "KEY POINTS:\n" + "\n".join([f"- {kp}" for kp in rec.key_points]) + "\n\n"
+                )
                 if rec.decisions:
-                    summary_text += "DECISIONS:\n" + "\n".join([f"- {d}" for d in rec.decisions]) + "\n\n"
+                    summary_text += (
+                        "DECISIONS:\n" + "\n".join([f"- {d}" for d in rec.decisions]) + "\n\n"
+                    )
 
                 st.download_button(
                     "Download summary",
@@ -389,7 +451,9 @@ def main() -> None:
 
                 progress_runner("Processing meeting…")
 
-                result = run_pipeline(audio_bytes=audio_bytes, transcript_text=controls["transcript_text"])
+                result = run_pipeline(
+                    audio_bytes=audio_bytes, transcript_text=controls["transcript_text"]
+                )
 
                 rec = save_record(controls["title"], result)
                 results_panel(rec)

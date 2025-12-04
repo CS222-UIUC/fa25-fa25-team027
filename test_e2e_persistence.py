@@ -1,7 +1,7 @@
-'''
+"""
 End-to-end test for database persistence across app restarts
 Simulates the full workflow: save -> close -> reopen -> verify
-'''
+"""
 
 import os
 from meeting_db import MeetingDatabase
@@ -34,9 +34,9 @@ def test_persistence_across_restarts():
             "key_points": ["Discussed sprint goals", "Assigned tasks"],
             "action_items": [
                 {"assignee": "Sarah", "task": "Implement login UI", "deadline": "Friday"},
-                {"assignee": "Mike", "task": "Setup OAuth", "deadline": "Wednesday"}
+                {"assignee": "Mike", "task": "Setup OAuth", "deadline": "Wednesday"},
             ],
-            "decisions": ["Using OAuth for authentication"]
+            "decisions": ["Using OAuth for authentication"],
         },
         {
             "meeting_id": "20241124130000",
@@ -45,7 +45,7 @@ def test_persistence_across_restarts():
             "summary_heading": "Daily Standup",
             "key_points": ["Team updates", "Blockers discussed"],
             "action_items": [],
-            "decisions": []
+            "decisions": [],
         },
         {
             "meeting_id": "20241124140000",
@@ -56,8 +56,8 @@ def test_persistence_across_restarts():
             "action_items": [
                 {"assignee": "Designer", "task": "Update mockups", "deadline": "Tomorrow"}
             ],
-            "decisions": ["Approved new color scheme", "Layout finalized"]
-        }
+            "decisions": ["Approved new color scheme", "Layout finalized"],
+        },
     ]
 
     for meeting in meetings_data:

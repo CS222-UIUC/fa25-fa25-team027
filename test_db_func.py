@@ -3,6 +3,7 @@ Unit tests for db_func.py
 
 Tests all CRUD operations and edge cases for the SQLite database wrapper
 """
+
 import pytest
 import os
 import sqlite3
@@ -41,7 +42,7 @@ def test_table_spec():
         "username": ["VARCHAR(100)"],
         "email": ["VARCHAR(255)"],
         "age": ["INTEGER"],
-        "Primary Key": "user_id"
+        "Primary Key": "user_id",
     }
 
 
@@ -93,10 +94,7 @@ class TestTableOperations:
 
     def test_create_table_basic(self, test_db):
         """Test creating a table with basic columns"""
-        spec = {
-            "id": ["INTEGER"],
-            "name": ["VARCHAR(100)"]
-        }
+        spec = {"id": ["INTEGER"], "name": ["VARCHAR(100)"]}
 
         db.create_table(test_db, spec, "test_table")
 
@@ -126,7 +124,7 @@ class TestTableOperations:
         parent_spec = {
             "dept_id": ["VARCHAR(10)"],
             "dept_name": ["VARCHAR(100)"],
-            "Primary Key": "dept_id"
+            "Primary Key": "dept_id",
         }
         db.create_table(test_db, parent_spec, "departments")
 
@@ -136,7 +134,7 @@ class TestTableOperations:
             "emp_name": ["VARCHAR(100)"],
             "dept_id": ["VARCHAR(10)"],
             "Primary Key": "emp_id",
-            "Foreign Key": [("dept_id", "departments")]
+            "Foreign Key": [("dept_id", "departments")],
         }
         db.create_table(test_db, child_spec, "employees")
 
@@ -182,12 +180,7 @@ class TestInsertOperations:
         """Test basic single row insertion"""
         db.create_table(test_db, test_table_spec, "users")
 
-        row = {
-            "user_id": "U001",
-            "username": "alice",
-            "email": "alice@example.com",
-            "age": 25
-        }
+        row = {"user_id": "U001", "username": "alice", "email": "alice@example.com", "age": 25}
 
         db.single_insert(test_db, row, "users")
 
@@ -202,7 +195,7 @@ class TestInsertOperations:
 
         row = {
             "user_id": "U002",
-            "username": "bob"
+            "username": "bob",
             # email and age omitted
         }
 
@@ -220,7 +213,7 @@ class TestInsertOperations:
         row = {
             "USER_ID": "U003",  # Uppercase
             "UserName": "charlie",  # Mixed case
-            "email": "charlie@example.com"  # Lowercase
+            "email": "charlie@example.com",  # Lowercase
         }
 
         db.single_insert(test_db, row, "users")
@@ -327,10 +320,7 @@ class TestUpdateOperations:
     def test_update_single_row(self, populated_table):
         """Test updating a single row"""
         affected = db.update(
-            populated_table,
-            {"email": "alice.new@example.com"},
-            {"user_id": "U001"},
-            "users"
+            populated_table, {"email": "alice.new@example.com"}, {"user_id": "U001"}, "users"
         )
 
         assert affected == 1
@@ -342,10 +332,7 @@ class TestUpdateOperations:
     def test_update_multiple_columns(self, populated_table):
         """Test updating multiple columns at once"""
         affected = db.update(
-            populated_table,
-            {"username": "alice_updated", "age": 26},
-            {"user_id": "U001"},
-            "users"
+            populated_table, {"username": "alice_updated", "age": 26}, {"user_id": "U001"}, "users"
         )
 
         assert affected == 1
@@ -358,37 +345,24 @@ class TestUpdateOperations:
     def test_update_multiple_rows(self, populated_table):
         """Test updating multiple rows at once"""
         # First add a row with same age
-        db.single_insert(populated_table, {"user_id": "U003", "username": "charlie", "age": 25}, "users")
+        db.single_insert(
+            populated_table, {"user_id": "U003", "username": "charlie", "age": 25}, "users"
+        )
 
         # Update all users with age 25
-        affected = db.update(
-            populated_table,
-            {"age": 26},
-            {"age": 25},
-            "users"
-        )
+        affected = db.update(populated_table, {"age": 26}, {"age": 25}, "users")
 
         assert affected == 2  # alice and charlie
 
     def test_update_with_string_where(self, populated_table):
         """Test UPDATE with WHERE clause as raw SQL string"""
-        affected = db.update(
-            populated_table,
-            {"age": 31},
-            "AGE = 30",
-            "users"
-        )
+        affected = db.update(populated_table, {"age": 31}, "AGE = 30", "users")
 
         assert affected == 1
 
     def test_update_no_where(self, populated_table):
         """Test UPDATE without WHERE clause (updates all rows)"""
-        affected = db.update(
-            populated_table,
-            {"email": "updated@example.com"},
-            None,
-            "users"
-        )
+        affected = db.update(populated_table, {"email": "updated@example.com"}, None, "users")
 
         assert affected == 2  # Both rows updated
 
@@ -400,10 +374,7 @@ class TestUpdateOperations:
     def test_update_no_match(self, populated_table):
         """Test UPDATE with WHERE that matches no rows"""
         affected = db.update(
-            populated_table,
-            {"email": "new@example.com"},
-            {"user_id": "U999"},
-            "users"
+            populated_table, {"email": "new@example.com"}, {"user_id": "U999"}, "users"
         )
 
         assert affected == 0
@@ -482,7 +453,7 @@ class TestEdgeCases:
         row = {
             "user_id": "U001",
             "username": "alice's account",  # Single quote
-            "email": "alice+test@example.com"  # Plus sign
+            "email": "alice+test@example.com",  # Plus sign
         }
 
         db.single_insert(test_db, row, "users")
@@ -498,7 +469,7 @@ class TestEdgeCases:
 
         row = {
             "user_id": "U001",
-            "username": "alice"
+            "username": "alice",
             # email and age intentionally omitted (will be NULL)
         }
 

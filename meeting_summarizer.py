@@ -1,7 +1,7 @@
-'''
+"""
 Meeting Summarizer using Ollama with gpt-oss-120b
 This module handles the LLM-based summarization of meeting transcripts using local Ollama models
-'''
+"""
 
 import json
 import ollama
@@ -39,9 +39,7 @@ class MeetingSummarizer:
             # Re-raise ValueError (model not found)
             raise
         except Exception as e:
-            raise ConnectionError(
-                f"Cannot connect to Ollama. Is it running? Error: {e}"
-            )
+            raise ConnectionError(f"Cannot connect to Ollama. Is it running? Error: {e}")
 
     def _get_system_prompt(self) -> str:
         """
@@ -93,11 +91,7 @@ Guidelines:
 - Keep descriptions concise but informative
 - Return ONLY the JSON object, no markdown, no explanation"""
 
-    def summarize(
-        self,
-        transcript: str,
-        max_retries: int = 2
-    ) -> Dict:
+    def summarize(self, transcript: str, max_retries: int = 2) -> Dict:
         """
         Summarize a meeting transcript into structured data
 
@@ -121,33 +115,29 @@ Guidelines:
                 response = ollama.chat(
                     model=self.model_name,
                     messages=[
+                        {"role": "system", "content": self._get_system_prompt()},
                         {
-                            'role': 'system',
-                            'content': self._get_system_prompt()
+                            "role": "user",
+                            "content": f"Summarize this meeting transcript:\n\n{transcript}",
                         },
-                        {
-                            'role': 'user',
-                            'content': f'Summarize this meeting transcript:\n\n{transcript}'
-                        }
-                    ]
+                    ],
                 )
 
-                result_text = response['message']['content'].strip()
+                result_text = response["message"]["content"].strip()
 
                 # Try to extract JSON if it's wrapped in markdown code blocks
-                if result_text.startswith('```'):
+                if result_text.startswith("```"):
                     # Remove markdown code blocks
-                    lines = result_text.split('\n')
-                    result_text = '\n'.join(
-                        line for line in lines
-                        if not line.strip().startswith('```')
+                    lines = result_text.split("\n")
+                    result_text = "\n".join(
+                        line for line in lines if not line.strip().startswith("```")
                     )
 
                 # Parse JSON
                 summary = json.loads(result_text)
 
                 # Validate structure
-                required_keys = ['summary_heading', 'key_points', 'action_items', 'decisions']
+                required_keys = ["summary_heading", "key_points", "action_items", "decisions"]
                 if not all(key in summary for key in required_keys):
                     raise ValueError(f"Missing required keys. Got: {summary.keys()}")
 
@@ -186,7 +176,7 @@ Guidelines:
                 "key_points": ["Full transcript available below"],
                 "action_items": [],
                 "decisions": [],
-                "error": str(e)
+                "error": str(e),
             }
 
 

@@ -40,7 +40,6 @@ omit = [
     "model/*",
     "__pycache__/*",
     "app.py",
-    "meeting_s
 ]
 
 [tool.coverage.report]

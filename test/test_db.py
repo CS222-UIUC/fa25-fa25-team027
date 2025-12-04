@@ -3,7 +3,7 @@ Test suite for db.py
 """
 
 import os
-import db_func as db
+from .. import db_func as db
 
 # remove existing db if any
 if os.path.exists("test.db"):

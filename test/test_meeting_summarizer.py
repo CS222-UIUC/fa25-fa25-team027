@@ -5,7 +5,7 @@ Unit tests for meeting_summarizer.py
 import pytest
 import json
 from unittest.mock import patch, MagicMock
-from meeting_summarizer import MeetingSummarizer
+from ..meeting_summarizer import MeetingSummarizer
 
 
 class TestMeetingSummarizer:

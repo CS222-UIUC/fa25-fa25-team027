@@ -5,7 +5,7 @@ This module handles the LLM-based summarization of meeting transcripts using loc
 
 import json
 import ollama
-from typing import Dict, Optional
+from typing import Dict
 
 
 class MeetingSummarizer:

@@ -4,7 +4,7 @@ Simulates the full workflow: save -> close -> reopen -> verify
 """
 
 import os
-from meeting_db import MeetingDatabase
+from ..meeting_db import MeetingDatabase
 
 
 def test_persistence_across_restarts():

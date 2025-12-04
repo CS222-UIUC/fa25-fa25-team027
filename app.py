@@ -1,9 +1,7 @@
 from __future__ import annotations
-import io
 import time
 import ssl
-import certifi
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import whisperx
@@ -12,9 +10,6 @@ import tempfile
 import streamlit as st
 from meeting_summarizer import MeetingSummarizer
 from meeting_db import MeetingDatabase
-
-# Fix SSL certificate issues on macOS
-import urllib.request
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -343,7 +338,7 @@ def save_record(title: str, payload: Dict[str, Any]) -> MeetingRecord:
     return rec
 
 
-def history_panel(page_size: int = 5) -> None:
+def history_panel(page_size: int = 5) -> None:  # noqa: C901
     st.subheader("History")
 
     # Load history from database if available
@@ -364,7 +359,7 @@ def history_panel(page_size: int = 5) -> None:
         start = offset
         end = min(start + len(history_data), total)
 
-        st.caption(f"Showing {start+1}–{end} of {total}")
+        st.caption(f"Showing {start + 1}–{end} of {total}")
 
         # Convert database records to MeetingRecord objects for display
         history = []

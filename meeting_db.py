@@ -6,6 +6,7 @@ Handles persistent storage of meeting records using SQLite via db_func
 import db_func
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
+import logging
 
 
 class MeetingDatabase:
@@ -32,7 +33,7 @@ class MeetingDatabase:
         # Check if tables exist by trying to query them
         try:
             db_func.select(self.conn, [], None, None, "meetings")
-        except:
+        except Exception:
             # Tables don't exist, create them
             self._create_tables()
 
@@ -286,8 +287,11 @@ class MeetingDatabase:
 
     def close(self):
         """Close the database connection"""
-        if self.conn:
+        try:
             self.conn.close()
+            logging.info("Database connection closed.")
+        except Exception as e:
+            logging.error(f"Error closing database connection: {e}")
 
 
 # Example usage

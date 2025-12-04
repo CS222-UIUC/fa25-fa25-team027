@@ -5,7 +5,7 @@
 line-length = 100
 
 # Target Python versions
-target-version = ['py310', 'py311']
+target-version = ['py312']
 
 # Exclude files and directories
 exclude = '''
@@ -26,7 +26,7 @@ exclude = '''
 
 [tool.pytest.ini_options]
 # Pytest configuration (alternative to pytest.ini)
-testpaths = ["."]
+testpaths = ["test"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -39,6 +39,8 @@ omit = [
     "test_*.py",
     "model/*",
     "__pycache__/*",
+    "app.py",
+    "meeting_s
 ]
 
 [tool.coverage.report]

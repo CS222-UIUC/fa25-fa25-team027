@@ -5,7 +5,7 @@ Tests the MeetingDatabase class and its interaction with db_func
 
 import pytest
 import os
-from ..meeting_db import MeetingDatabase
+from meeting_db import MeetingDatabase
 
 
 @pytest.fixture

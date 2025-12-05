@@ -5,7 +5,7 @@ Unit tests for meeting_summarizer.py
 import pytest
 import json
 from unittest.mock import patch, MagicMock
-from ..meeting_summarizer import MeetingSummarizer
+from meeting_summarizer import MeetingSummarizer
 
 
 class TestMeetingSummarizer:
@@ -16,11 +16,11 @@ class TestMeetingSummarizer:
         """Test successful initialization when model is available"""
         # Mock the ollama.list() response
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         summarizer = MeetingSummarizer()
-        assert summarizer.model_name == "gpt-oss-120b"
+        assert summarizer.model_name == "gpt-oss:120b-cloud"
 
     @patch("meeting_summarizer.ollama.list")
     def test_init_model_not_found(self, mock_list):
@@ -31,7 +31,7 @@ class TestMeetingSummarizer:
         with pytest.raises(ValueError) as exc_info:
             MeetingSummarizer()
 
-        assert "Model 'gpt-oss-120b' not found" in str(exc_info.value)
+        assert "Model 'gpt-oss:120b-cloud' not found" in str(exc_info.value)
 
     @patch("meeting_summarizer.ollama.list")
     def test_init_ollama_not_running(self, mock_list):
@@ -50,7 +50,7 @@ class TestMeetingSummarizer:
         """Test successful summarization with valid JSON response"""
         # Setup mocks
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         valid_response = {
@@ -85,7 +85,7 @@ class TestMeetingSummarizer:
         """Test summarization handles JSON wrapped in markdown code blocks"""
         # Setup mocks
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         valid_response = {
@@ -110,7 +110,7 @@ class TestMeetingSummarizer:
     def test_summarize_empty_transcript(self, mock_list):
         """Test that empty transcript raises ValueError"""
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         summarizer = MeetingSummarizer()
@@ -125,7 +125,7 @@ class TestMeetingSummarizer:
     def test_summarize_invalid_json(self, mock_chat, mock_list):
         """Test that invalid JSON triggers retry and eventually fails"""
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         # Return invalid JSON on all attempts
@@ -143,7 +143,7 @@ class TestMeetingSummarizer:
     def test_summarize_missing_keys(self, mock_chat, mock_list):
         """Test that response with missing required keys fails"""
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         # Missing 'decisions' key
@@ -163,7 +163,7 @@ class TestMeetingSummarizer:
     def test_summarize_with_fallback_success(self, mock_chat, mock_list):
         """Test summarize_with_fallback returns valid result on success"""
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         valid_response = {
@@ -186,7 +186,7 @@ class TestMeetingSummarizer:
     def test_summarize_with_fallback_error(self, mock_chat, mock_list):
         """Test summarize_with_fallback returns fallback structure on error"""
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         # Simulate error
@@ -216,7 +216,7 @@ class TestMeetingSummarizer:
     def test_system_prompt_structure(self, mock_list):
         """Test that system prompt contains required elements"""
         mock_model = MagicMock()
-        mock_model.model = "gpt-oss-120b"
+        mock_model.model = "gpt-oss:120b-cloud"
         mock_list.return_value = MagicMock(models=[mock_model])
 
         summarizer = MeetingSummarizer()

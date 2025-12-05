@@ -28,6 +28,8 @@ omit =
     htmlcov/*
     .coverage
 
+    app.py
+
 [report]
 # Reporting options
 precision = 2

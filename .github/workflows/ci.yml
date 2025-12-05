@@ -33,11 +33,11 @@ jobs:
 
     - name: Run unit tests with pytest
       run: |
-        pytest test_meeting_summarizer.py test_db_func.py -v --tb=short
+        pytest test/* -v --tb=short
 
     - name: Generate coverage report
       run: |
-        pytest test_meeting_summarizer.py test_db_func.py --cov=. --cov-report=xml --cov-report=term-missing
+        pytest test/* --cov=. --cov-report=xml --cov-report=term-missing --ignore=app.py
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4

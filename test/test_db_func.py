@@ -7,7 +7,7 @@ Tests all CRUD operations and edge cases for the SQLite database wrapper
 import pytest
 import os
 import sqlite3
-from .. import db_func as db
+import db_func as db
 
 
 @pytest.fixture

@@ -166,7 +166,7 @@ def update(conn, col_list, where_clause, name):
     q = q[:-1]
 
     if where_clause is not None:
-        if where_clause is dict:
+        if isinstance(where_clause, dict):
             q += " WHERE "
             for k, v in where_clause.items():
                 q += k.upper() + " = ? AND "
@@ -195,7 +195,7 @@ def delete(conn, cmd_dict, name):
     vals = []
 
     if cmd_dict is not None:
-        if cmd_dict is dict:
+        if isinstance(cmd_dict, dict):
             q += " WHERE "
             for k, v in cmd_dict.items():
                 q += k.upper() + " = ? AND "

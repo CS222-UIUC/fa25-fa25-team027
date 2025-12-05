@@ -13,7 +13,7 @@ class MeetingSummarizer:
     Handles meeting transcript summarization using local Ollama with gpt-oss-120b
     """
 
-    def __init__(self, model_name: str = "gpt-oss-120b"):
+    def __init__(self, model_name: str = "gpt-oss:120b-cloud"):
         """
         Initialize the summarizer with a specific Ollama model
 

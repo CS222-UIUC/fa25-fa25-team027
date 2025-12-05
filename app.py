@@ -27,7 +27,7 @@ alignment_metadata = None
 
 # Initialize the meeting summarizer (using Ollama with llama3.2)
 try:
-    summarizer = MeetingSummarizer(model_name="llama3.2:latest")
+    summarizer = MeetingSummarizer()
 except Exception as e:
     st.error(f"Failed to initialize MeetingSummarizer: {e}")
     st.info("Make sure Ollama is running and the model is installed.")

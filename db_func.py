@@ -121,7 +121,7 @@ def select(conn, col_list, where_clause, order_by, name):
 
     vals = []
     if where_clause is not None:
-        if where_clause is dict:
+        if isinstance(where_clause, dict):
             q += " WHERE "
             for k, v in where_clause.items():
                 q += k.upper() + " = ? AND "
@@ -132,7 +132,7 @@ def select(conn, col_list, where_clause, order_by, name):
 
     if order_by is not None:
         q += " ORDER BY "
-        if order_by is list:
+        if isinstance(order_by, list):
             for c in order_by:
                 q += c.upper() + ","
             q = q[:-1]

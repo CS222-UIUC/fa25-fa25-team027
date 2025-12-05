@@ -1,6 +1,7 @@
-'''
+"""
 Test suite for db.py
-'''
+"""
+
 import os
 import db_func as db
 
@@ -16,7 +17,7 @@ spec = {
     "summary_heading": ["VARCHAR(255)"],
     "summary_points": ["LONGTEXT"],
     "summary_todo": ["LONGTEXT"],
-    "Primary Key": "usr_id"
+    "Primary Key": "usr_id",
 }
 
 # create table
@@ -27,14 +28,14 @@ row1 = {
     "usr_id": "U001",
     "summary_heading": "Day Summary",
     "summary_points": "Completed CRUD system",
-    "summary_todo": "Add test suite"
+    "summary_todo": "Add test suite",
 }
 
 row2 = {
     "usr_id": "U002",
     "summary_heading": "Week Summary",
     "summary_points": "Worked on SQL schema",
-    "summary_todo": "Optimize joins"
+    "summary_todo": "Optimize joins",
 }
 
 db.single_insert(conn, row1, "user_summary")
@@ -79,4 +80,3 @@ db.drop_table(conn, "user_summary")
 
 conn.close()
 print("\nDone")
-

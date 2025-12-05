@@ -1,0 +1,48 @@
+[tool.black]
+# Black code formatter configuration for Meeting Minion project
+
+# Line length
+line-length = 100
+
+# Target Python versions
+target-version = ['py312']
+
+# Exclude files and directories
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | \.pytest_cache
+  | \.coverage
+  | htmlcov
+  | model
+  | build
+  | dist
+  | \.egg-info
+)/
+'''
+
+[tool.pytest.ini_options]
+# Pytest configuration (alternative to pytest.ini)
+testpaths = ["test"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+# Coverage configuration (alternative to .coveragerc)
+source = ["."]
+omit = [
+    "venv/*",
+    "test_*.py",
+    "model/*",
+    "__pycache__/*",
+    "app.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
